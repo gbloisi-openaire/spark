@@ -426,6 +426,14 @@ package object config {
       .intConf
       .createWithDefault(3)
 
+  private[spark] val SHUFFLE_MAX_ATTEMPTS_ON_NETTY_OOM =
+    ConfigBuilder("spark.shuffle.maxAttemptsOnNettyOOM")
+      .doc("The max attempts of a shuffle block would retry on Netty OOM issue before throwing " +
+        "the shuffle fetch failure.")
+      .internal()
+      .intConf
+      .createWithDefault(10)
+
   private[spark] val REDUCER_MAX_BLOCKS_IN_FLIGHT_PER_ADDRESS =
     ConfigBuilder("spark.reducer.maxBlocksInFlightPerAddress")
       .doc("This configuration limits the number of remote blocks being fetched per reduce task " +
@@ -450,7 +458,7 @@ package object config {
       // as well use fetch-to-disk in that case.  The message includes some metadata in addition
       // to the block data itself (in particular UploadBlock has a lot of metadata), so we leave
       // extra room.
-      .createWithDefault(Int.MaxValue - 512)
+      .createWithDefaultString("200m")
 
   private[spark] val TASK_METRICS_TRACK_UPDATED_BLOCK_STATUSES =
     ConfigBuilder("spark.taskMetrics.trackUpdatedBlockStatuses")

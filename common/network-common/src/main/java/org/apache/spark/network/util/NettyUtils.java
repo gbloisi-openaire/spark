@@ -36,6 +36,11 @@ import io.netty.util.internal.PlatformDependent;
  * Utilities for creating various Netty constructs based on whether we're using EPOLL or NIO.
  */
 public class NettyUtils {
+
+  public static long freeDirectMemory() {
+    return PlatformDependent.maxDirectMemory() - PlatformDependent.usedDirectMemory();
+  }
+
   /** Creates a new ThreadFactory which prefixes each thread with the given name. */
   public static ThreadFactory createThreadFactory(String threadPoolPrefix) {
     return new DefaultThreadFactory(threadPoolPrefix, true);
