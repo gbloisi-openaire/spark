@@ -46,7 +46,11 @@ class ObjectAggregationMap() {
 
   def size: Int = hashMap.size()
 
-  def iterator: Iterator[AggregationBufferEntry] = {
+  /**
+   * Returns a destructive iterator of AggregationBufferEntry.
+   * Notice: it is illegal to call any method after `destructiveIterator()` has been called.
+   */
+  def destructiveIterator(): Iterator[AggregationBufferEntry] = {
     val iter = hashMap.entrySet().iterator()
     new Iterator[AggregationBufferEntry] {
 
@@ -55,6 +59,7 @@ class ObjectAggregationMap() {
       }
       override def next(): AggregationBufferEntry = {
         val entry = iter.next()
+        iter.remove()
         new AggregationBufferEntry(entry.getKey, entry.getValue)
       }
     }
@@ -78,7 +83,7 @@ class ObjectAggregationMap() {
       null
     )
 
-    val mapIterator = iterator
+    val mapIterator = destructiveIterator()
     val unsafeAggBufferProjection =
       UnsafeProjection.create(aggBufferAttributes.map(_.dataType).toArray)
 
