@@ -317,9 +317,9 @@ private[spark] class Client(
     sparkConf.get(ROLLED_LOG_INCLUDE_PATTERN).foreach { includePattern =>
       try {
         val logAggregationContext = Records.newRecord(classOf[LogAggregationContext])
-        logAggregationContext.setRolledLogsIncludePattern(includePattern)
+        logAggregationContext.setIncludePattern(includePattern)
         sparkConf.get(ROLLED_LOG_EXCLUDE_PATTERN).foreach { excludePattern =>
-          logAggregationContext.setRolledLogsExcludePattern(excludePattern)
+          logAggregationContext.setExcludePattern(excludePattern)
         }
         appContext.setLogAggregationContext(logAggregationContext)
       } catch {

@@ -86,7 +86,7 @@ trait KafkaDelegationTokenTest extends BeforeAndAfterEach {
   override def afterEach(): Unit = {
     try {
       Configuration.setConfiguration(null)
-      UserGroupInformation.reset()
+      //UserGroupInformation.reset()
       SparkEnv.set(savedSparkEnv)
     } finally {
       super.afterEach()
