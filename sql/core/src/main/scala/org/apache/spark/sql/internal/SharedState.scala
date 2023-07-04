@@ -18,6 +18,8 @@
 package org.apache.spark.sql.internal
 
 import java.net.URL
+import java.net.URLStreamHandler
+import java.net.URLStreamHandlerFactory
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import javax.annotation.concurrent.GuardedBy
@@ -196,7 +198,25 @@ object SharedState extends Logging {
       synchronized {
         if (!fsUrlStreamHandlerFactoryInitialized) {
           try {
-            URL.setURLStreamHandlerFactory(new FsUrlStreamHandlerFactory(hadoopConf))
+            URL.setURLStreamHandlerFactory(new URLStreamHandlerFactory() {
+                private val fsUrlStreamHandlerFactory = new FsUrlStreamHandlerFactory(hadoopConf)
+
+                override def createURLStreamHandler(protocol: String): URLStreamHandler = {
+                   val handler = fsUrlStreamHandlerFactory.createURLStreamHandler(protocol)
+                   if (handler == null) {
+                    return null
+                   }
+
+                  if (protocol != null &&
+                        (protocol.equalsIgnoreCase("http")
+                        || protocol.equalsIgnoreCase("https"))) {
+                     // return null to use system default URLStreamHandler
+                     null
+                  } else {
+                     handler
+                  }
+               }
+            })
             fsUrlStreamHandlerFactoryInitialized = true
           } catch {
             case NonFatal(_) =>
