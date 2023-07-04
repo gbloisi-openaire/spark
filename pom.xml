@@ -355,6 +355,21 @@
         <enabled>false</enabled>
       </snapshots>
     </repository>
+
+    <!--
+       This is used to get cloudera hadoop jars
+    -->
+    <repository>
+      <id>cloudera</id>
+      <name>Cloudera Repository</name>
+      <url>https://repository.cloudera.com/artifactory/cloudera-repos</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
   </repositories>
   <pluginRepositories>
     <pluginRepository>
@@ -3508,10 +3523,13 @@
 
     <profile>
       <id>hadoop-2</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
       <properties>
         <!-- make sure to update IsolatedClientLoader whenever this version is changed -->
-        <hadoop.version>2.7.4</hadoop.version>
-        <curator.version>2.7.1</curator.version>
+        <hadoop.version>2.6.0-cdh5.9.2</hadoop.version>
+        <curator.version>2.6.0</curator.version>
         <commons-io.version>2.4</commons-io.version>
         <!--
           the declaration site above of these variables explains why we need to re-assign them here
