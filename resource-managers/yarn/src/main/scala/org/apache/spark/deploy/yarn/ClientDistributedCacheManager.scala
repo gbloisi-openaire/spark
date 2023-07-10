@@ -25,7 +25,7 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileStatus, FileSystem, Path}
 import org.apache.hadoop.fs.permission.FsAction
 import org.apache.hadoop.yarn.api.records._
-import org.apache.hadoop.yarn.util.Records
+import org.apache.hadoop.yarn.util.{ConverterUtils, Records}
 
 import org.apache.spark.SparkConf
 import org.apache.spark.deploy.yarn.config._
@@ -68,12 +68,12 @@ private[spark] class ClientDistributedCacheManager() extends Logging {
       link: String,
       statCache: Map[URI, FileStatus],
       appMasterOnly: Boolean = false): Unit = {
-    val destStatus = getFileStatus(fs, destPath.toUri, statCache)
+    val destStatus = statCache.getOrElse(destPath.toUri(), fs.getFileStatus(destPath))
     val amJarRsrc = Records.newRecord(classOf[LocalResource])
     amJarRsrc.setType(resourceType)
     val visibility = getVisibility(conf, destPath.toUri(), statCache)
     amJarRsrc.setVisibility(visibility)
-    amJarRsrc.setResource(URL.fromPath(destPath))
+    amJarRsrc.setResource(ConverterUtils.getYarnUrlFromPath(destPath))
     amJarRsrc.setTimestamp(destStatus.getModificationTime())
     amJarRsrc.setSize(destStatus.getLen())
     require(link != null && link.nonEmpty, "You must specify a valid link name.")
@@ -119,61 +119,46 @@ private[spark] class ClientDistributedCacheManager() extends Logging {
    */
   private def isPublic(conf: Configuration, uri: URI, statCache: Map[URI, FileStatus]): Boolean = {
     val fs = FileSystem.get(uri, conf)
+    val current = new Path(uri.getPath())
     // the leaf level file should be readable by others
-    if (!checkPermissionOfOther(fs, uri, FsAction.READ, statCache)) {
+    if (!checkPermissionOfOther(fs, current, FsAction.READ, statCache)) {
       return false
     }
-    ancestorsHaveExecutePermissions(fs, getParentURI(uri), statCache)
+    ancestorsHaveExecutePermissions(fs, current.getParent(), statCache)
   }
 
   /**
-   * Get the Parent URI of the given URI. Notes that the query & fragment of original URI will not
-   * be inherited when obtaining parent URI.
-   *
-   * @return the parent URI, null if the given uri is the root
-   */
-  private[yarn] def getParentURI(uri: URI): URI = {
-    val path = new Path(uri.toString)
-    val parent = path.getParent()
-    if (parent == null) {
-      null
-    } else {
-      parent.toUri()
-    }
-  }
-
-  /**
-   * Returns true if all ancestors of the specified uri have the 'execute'
+   * Returns true if all ancestors of the specified path have the 'execute'
    * permission set for all users (i.e. that other users can traverse
-   * the directory hierarchy to the given uri)
+   * the directory hierarchy to the given path)
    * @return true if all ancestors have the 'execute' permission set for all users
    */
   private def ancestorsHaveExecutePermissions(
       fs: FileSystem,
-      uri: URI,
+      path: Path,
       statCache: Map[URI, FileStatus]): Boolean = {
-    var current = uri
+    var current = path
     while (current != null) {
-      // the subdirs in the corresponding uri path should have execute permissions for others
+      // the subdirs in the path should have execute permissions for others
       if (!checkPermissionOfOther(fs, current, FsAction.EXECUTE, statCache)) {
         return false
       }
-      current = getParentURI(current)
+      current = current.getParent()
     }
     true
   }
 
   /**
-   * Checks for a given URI whether the Other permissions on it
+   * Checks for a given path whether the Other permissions on it
    * imply the permission in the passed FsAction
    * @return true if the path in the uri is visible to all, false otherwise
    */
   private def checkPermissionOfOther(
       fs: FileSystem,
-      uri: URI,
+      path: Path,
       action: FsAction,
       statCache: Map[URI, FileStatus]): Boolean = {
-    val status = getFileStatus(fs, uri, statCache)
+    val status = getFileStatus(fs, path.toUri(), statCache)
     val perms = status.getPermission()
     val otherAction = perms.getOtherAction()
     otherAction.implies(action)
@@ -199,3 +184,4 @@ private[spark] class ClientDistributedCacheManager() extends Logging {
     stat
   }
 }
+

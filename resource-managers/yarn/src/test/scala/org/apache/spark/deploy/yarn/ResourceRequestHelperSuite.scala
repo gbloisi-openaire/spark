@@ -24,13 +24,12 @@ import org.scalatest.matchers.should.Matchers._
 
 import org.apache.spark.{SparkConf, SparkException, SparkFunSuite}
 import org.apache.spark.deploy.yarn.ResourceRequestHelper._
+import org.apache.spark.deploy.yarn.ResourceRequestTestHelper.ResourceInformation
 import org.apache.spark.deploy.yarn.config._
 import org.apache.spark.internal.config.{DRIVER_CORES, DRIVER_MEMORY, EXECUTOR_CORES, EXECUTOR_MEMORY}
 import org.apache.spark.resource.ResourceUtils.AMOUNT
 
-class ResourceRequestHelperSuite extends SparkFunSuite
-    with Matchers
-    with ResourceRequestTestHelper {
+class ResourceRequestHelperSuite extends SparkFunSuite with Matchers {
 
   private val CUSTOM_RES_1 = "custom-resource-type-1"
   private val CUSTOM_RES_2 = "custom-resource-type-2"
@@ -97,25 +96,24 @@ class ResourceRequestHelperSuite extends SparkFunSuite
   }
 
   Seq(
-    "value with unit" -> Seq((CUSTOM_RES_1, 2, "G")),
-    "value without unit" -> Seq((CUSTOM_RES_1, 123, "")),
-    "multiple resources" -> Seq((CUSTOM_RES_1, 123, "m"), (CUSTOM_RES_2, 10, "G"))
+    "value with unit" -> Seq(ResourceInformation(CUSTOM_RES_1, 2, "G")),
+    "value without unit" -> Seq(ResourceInformation(CUSTOM_RES_1, 123, "")),
+    "multiple resources" -> Seq(ResourceInformation(CUSTOM_RES_1, 123, "m"),
+      ResourceInformation(CUSTOM_RES_2, 10, "G"))
   ).foreach { case (name, resources) =>
     test(s"valid request: $name") {
-      val resourceDefs = resources.map { case (rName, _, _) => rName }
-      val requests = resources.map { case (rName, rValue, rUnit) =>
-        (rName, rValue.toString + rUnit)
-      }.toMap
-      withResourceTypes(resourceDefs) {
-        val resource = createResource()
-        setResourceRequests(requests, resource)
+      assume(isYarnResourceTypesAvailable())
+      val resourceDefs = resources.map { r => r.name }
+      val requests = resources.map { r => (r.name, r.value.toString + r.unit) }.toMap
 
-        resources.foreach { case (rName, rValue, rUnit) =>
-          val requested = resource.getResourceInformation(rName)
-          assert(requested.getName === rName)
-          assert(requested.getValue === rValue)
-          assert(requested.getUnits === rUnit)
-        }
+      ResourceRequestTestHelper.initializeResourceTypes(resourceDefs)
+
+      val resource = createResource()
+      setResourceRequests(requests, resource)
+
+      resources.foreach { r =>
+        val requested = ResourceRequestTestHelper.getResourceInformationByName(resource, r.name)
+        assert(requested === r)
       }
     }
   }
@@ -126,13 +124,14 @@ class ResourceRequestHelperSuite extends SparkFunSuite
     ("invalid unit", CUSTOM_RES_1, "123ppp")
   ).foreach { case (name, key, value) =>
     test(s"invalid request: $name") {
-      withResourceTypes(Seq(key)) {
-        val resource = createResource()
-        val thrown = intercept[IllegalArgumentException] {
-          setResourceRequests(Map(key -> value), resource)
-        }
-        thrown.getMessage should include (key)
+      assume(isYarnResourceTypesAvailable())
+      ResourceRequestTestHelper.initializeResourceTypes(Seq(key))
+
+      val resource = createResource()
+      val thrown = intercept[IllegalArgumentException] {
+        setResourceRequests(Map(key -> value), resource)
       }
+      thrown.getMessage should include (key)
     }
   }
 
@@ -148,6 +147,7 @@ class ResourceRequestHelperSuite extends SparkFunSuite
     NEW_CONFIG_DRIVER_CORES -> "1G"
   ).foreach { case (key, value) =>
     test(s"disallowed resource request: $key") {
+      assume(isYarnResourceTypesAvailable())
       val conf = new SparkConf(false).set(key, value)
       val thrown = intercept[SparkException] {
         validateResources(conf)
@@ -178,7 +178,7 @@ class ResourceRequestHelperSuite extends SparkFunSuite
 
   private def createResource(): Resource = {
     val resource = Records.newRecord(classOf[Resource])
-    resource.setMemorySize(512)
+    resource.setMemory(512)
     resource.setVirtualCores(2)
     resource
   }

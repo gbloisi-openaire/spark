@@ -36,7 +36,6 @@ import org.apache.commons.lang3.{JavaVersion, SystemUtils}
 import org.apache.commons.math3.stat.inference.ChiSquareTest
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
-import org.apache.hadoop.ipc.{CallerContext => HadoopCallerContext}
 import org.apache.logging.log4j.Level
 
 import org.apache.spark.{SparkConf, SparkException, SparkFunSuite, TaskContext}
@@ -957,14 +956,6 @@ class UtilsSuite extends SparkFunSuite with ResetSystemProperties {
     assert(Utils.getDynamicAllocationInitialExecutors( // should use minExecutors
       conf.set(DYN_ALLOCATION_INITIAL_EXECUTORS, 2)
         .set("spark.executor.instances", "1")) === 3)
-  }
-
-  test("Set Spark CallerContext") {
-    val context = "test"
-    new CallerContext(context).setCurrentContext()
-    if (CallerContext.callerContextEnabled) {
-      assert(s"SPARK_$context" === HadoopCallerContext.getCurrent.toString)
-    }
   }
 
   test("encodeFileNameToURIRawPath") {

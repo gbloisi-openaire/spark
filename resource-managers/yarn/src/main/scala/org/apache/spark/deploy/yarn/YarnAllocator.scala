@@ -510,10 +510,10 @@ private[yarn] class YarnAllocator(
           var requestContainerMessage = s"Will request $missing executor container(s) for " +
             s" ResourceProfile Id: $rpId, each with " +
             s"${resource.getVirtualCores} core(s) and " +
-            s"${resource.getMemorySize} MB memory."
-          if (resource.getResources().nonEmpty) {
-            requestContainerMessage ++= s" with custom resources: $resource"
-          }
+            s"${resource.getMemory} MB memory."
+          // if (resource.getResources().nonEmpty) {
+          //   requestContainerMessage ++= s" with custom resources: $resource"
+          // }
           logInfo(requestContainerMessage)
         }
 
@@ -737,7 +737,7 @@ private[yarn] class YarnAllocator(
       val containerId = container.getId
       val executorId = executorIdCounter.toString
       val yarnResourceForRpId = rpIdToYarnResource.get(rpId)
-      assert(container.getResource.getMemorySize >= yarnResourceForRpId.getMemorySize)
+      assert(container.getResource.getMemory >= yarnResourceForRpId.getMemory)
       logInfo(s"Launching container $containerId on host $executorHostname " +
         s"for executor with ID $executorId for ResourceProfile Id $rpId")
 

@@ -22,7 +22,7 @@ import java.net.{InetAddress, UnknownHostException, URI, URL}
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
-import java.util.{Collections, Locale, Properties, UUID}
+import java.util.{Locale, Properties, UUID}
 import java.util.zip.{ZipEntry, ZipOutputStream}
 
 import scala.collection.JavaConverters._
@@ -75,6 +75,10 @@ private[spark] class Client(
   private val hadoopConf = new YarnConfiguration(SparkHadoopUtil.newConfiguration(sparkConf))
 
   private val isClusterMode = sparkConf.get(SUBMIT_DEPLOY_MODE) == "cluster"
+
+  // ContainerLaunchContext.setTokensConf is only available in Hadoop 2.9+ and 3.x, so here we use
+  // reflection to avoid compilation for Hadoop 2.7 profile.
+  private val SET_TOKENS_CONF_METHOD = "setTokensConf"
 
   private val isClientUnmanagedAMEnabled = sparkConf.get(YARN_UNMANAGED_AM) && !isClusterMode
   private var appMaster: ApplicationMaster = _
@@ -289,7 +293,7 @@ private[spark] class Client(
     }
 
     val capability = Records.newRecord(classOf[Resource])
-    capability.setMemorySize(amMemory + amMemoryOverhead)
+    capability.setMemory(amMemory + amMemoryOverhead)
     capability.setVirtualCores(amCores)
     if (amResources.nonEmpty) {
       ResourceRequestHelper.setResourceRequests(amResources, capability)
@@ -304,7 +308,7 @@ private[spark] class Client(
         amRequest.setCapability(capability)
         amRequest.setNumContainers(1)
         amRequest.setNodeLabelExpression(expr)
-        appContext.setAMContainerResourceRequests(Collections.singletonList(amRequest))
+        appContext.setAMContainerResourceRequest(amRequest)
       case None =>
         appContext.setResource(capability)
     }
@@ -312,9 +316,9 @@ private[spark] class Client(
     sparkConf.get(ROLLED_LOG_INCLUDE_PATTERN).foreach { includePattern =>
       try {
         val logAggregationContext = Records.newRecord(classOf[LogAggregationContext])
-        logAggregationContext.setRolledLogsIncludePattern(includePattern)
+        logAggregationContext.setIncludePattern(includePattern)
         sparkConf.get(ROLLED_LOG_EXCLUDE_PATTERN).foreach { excludePattern =>
-          logAggregationContext.setRolledLogsExcludePattern(excludePattern)
+          logAggregationContext.setExcludePattern(excludePattern)
         }
         appContext.setLogAggregationContext(logAggregationContext)
       } catch {
@@ -370,7 +374,16 @@ private[spark] class Client(
       }
       copy.write(dob);
 
-      amContainer.setTokensConf(ByteBuffer.wrap(dob.getData))
+      // since this method was added in Hadoop 2.9 and 3.0, we use reflection here to avoid
+      // compilation error for Hadoop 2.7 profile.
+      val setTokensConfMethod = try {
+        amContainer.getClass.getMethod(SET_TOKENS_CONF_METHOD, classOf[ByteBuffer])
+      } catch {
+        case _: NoSuchMethodException =>
+          throw new SparkException(s"Cannot find setTokensConf method in ${amContainer.getClass}." +
+              s" Please check YARN version and make sure it is 2.9+ or 3.x")
+      }
+      setTokensConfMethod.invoke(amContainer, ByteBuffer.wrap(dob.getData))
     }
   }
 
@@ -389,7 +402,7 @@ private[spark] class Client(
    * Fail fast if we have requested more resources per container than is available in the cluster.
    */
   private def verifyClusterResources(newAppResponse: GetNewApplicationResponse): Unit = {
-    val maxMem = newAppResponse.getMaximumResourceCapability.getMemorySize
+    val maxMem = newAppResponse.getMaximumResourceCapability().getMemory()
     logInfo("Verifying our application has not requested more than the maximum " +
       s"memory capability of the cluster ($maxMem MB per container)")
     val executorMem =
@@ -1748,3 +1761,4 @@ private[spark] case class YarnAppReport(
     appState: YarnApplicationState,
     finalState: FinalApplicationStatus,
     diagnostics: Option[String])
+

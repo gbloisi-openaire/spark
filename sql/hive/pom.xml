@@ -159,7 +159,7 @@
     </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
-      <artifactId>hadoop-client-runtime</artifactId>
+      <artifactId>hadoop-client</artifactId>
       <scope>${hadoop.deps.scope}</scope>
     </dependency>
     <dependency>

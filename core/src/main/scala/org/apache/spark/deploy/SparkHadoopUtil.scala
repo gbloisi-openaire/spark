@@ -26,11 +26,9 @@ import java.util.{Date, Locale}
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.collection.mutable.HashMap
-import scala.language.existentials
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs._
-import org.apache.hadoop.hdfs.DistributedFileSystem.HdfsDataOutputStreamBuilder
 import org.apache.hadoop.mapred.JobConf
 import org.apache.hadoop.security.{Credentials, UserGroupInformation}
 import org.apache.hadoop.security.token.{Token, TokenIdentifier}
@@ -564,21 +562,7 @@ private[spark] object SparkHadoopUtil extends Logging {
    */
   // scalastyle:on line.size.limit
   def createFile(fs: FileSystem, path: Path, allowEC: Boolean): FSDataOutputStream = {
-    if (allowEC) {
       fs.create(path)
-    } else {
-      // the builder api does not resolve relative paths, nor does it create parent dirs, while
-      // the old api does.
-      if (!fs.mkdirs(path.getParent())) {
-        throw new IOException(s"Failed to create parents of $path")
-      }
-      val qualifiedPath = fs.makeQualified(path)
-      val builder = fs.createFile(qualifiedPath)
-      builder match {
-        case hb: HdfsDataOutputStreamBuilder => hb.replicate().build()
-        case _ => fs.create(path)
-      }
-    }
   }
 
 }

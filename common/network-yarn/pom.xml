@@ -65,12 +65,7 @@
     <!-- Provided dependencies -->
     <dependency>
       <groupId>org.apache.hadoop</groupId>
-      <artifactId>hadoop-client-api</artifactId>
-      <version>${hadoop.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.hadoop</groupId>
-      <artifactId>hadoop-client-runtime</artifactId>
+      <artifactId>hadoop-client</artifactId>
       <version>${hadoop.version}</version>
     </dependency>
     <dependency>
