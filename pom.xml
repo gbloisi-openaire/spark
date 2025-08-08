@@ -177,7 +177,7 @@
       errors building different Hadoop versions.
       See: SPARK-36547, SPARK-38394.
        -->
-    <scala-maven-plugin.version>4.8.0</scala-maven-plugin.version>
+    <scala-maven-plugin.version>4.9.2</scala-maven-plugin.version>
     <versions-maven-plugin.version>2.14.1</versions-maven-plugin.version>
     <!-- for now, not running scalafmt as part of default verify pipeline -->
     <scalafmt.skip>true</scalafmt.skip>
@@ -3578,7 +3578,7 @@
         <hadoop-client-minicluster.artifact>hadoop-client</hadoop-client-minicluster.artifact>
         <gcs-connector.version>hadoop2-2.2.11</gcs-connector.version>
         <!-- SPARK-36547: Please don't upgrade the version below, otherwise there will be an error on building Hadoop 2.7 package -->
-        <scala-maven-plugin.version>4.3.0</scala-maven-plugin.version>
+        <scala-maven-plugin.version>4.9.2</scala-maven-plugin.version>
       </properties>
     </profile>
 
