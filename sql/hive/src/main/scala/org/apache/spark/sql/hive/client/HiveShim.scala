@@ -1008,6 +1008,139 @@ private[client] class Shim_v2_0 extends Shim with Logging {
   }
 }
 
+// Reintroduce backward compatibility reversing the changes
+private[client] class Shim_v1_2 extends Shim_v2_0 {
+  protected lazy val holdDDLTime = JBoolean.FALSE
+
+  private lazy val loadPartitionMethod =
+    findMethod(
+      classOf[Hive],
+      "loadPartition",
+      classOf[Path],
+      classOf[String],
+      classOf[JMap[String, String]],
+      JBoolean.TYPE,
+      JBoolean.TYPE,
+      JBoolean.TYPE,
+      JBoolean.TYPE,
+      JBoolean.TYPE,
+      JBoolean.TYPE)
+
+  private lazy val loadDynamicPartitionsMethod =
+    findMethod(
+      classOf[Hive],
+      "loadDynamicPartitions",
+      classOf[Path],
+      classOf[String],
+      classOf[JMap[String, String]],
+      JBoolean.TYPE,
+      JInteger.TYPE,
+      JBoolean.TYPE,
+      JBoolean.TYPE,
+      JBoolean.TYPE,
+      JLong.TYPE)
+
+  private lazy val loadTableMethod =
+    findMethod(
+      classOf[Hive],
+      "loadTable",
+      classOf[Path],
+      classOf[String],
+      JBoolean.TYPE,
+      JBoolean.TYPE,
+      JBoolean.TYPE,
+      JBoolean.TYPE,
+      JBoolean.TYPE)
+
+  override def loadDynamicPartitions(
+                                      hive: Hive,
+                                      loadPath: Path,
+                                      tableName: String,
+                                      partSpec: JMap[String, String],
+                                      replace: Boolean,
+                                      numDP: Int,
+                                      hiveTable: Table): Unit = {
+    recordHiveCall()
+    val listBucketingEnabled = hiveTable.isStoredAsSubDirectories
+    loadDynamicPartitionsMethod.invoke(hive, loadPath, tableName, partSpec, replace: JBoolean,
+      numDP: JInteger, holdDDLTime, listBucketingEnabled: JBoolean, isAcid,
+      txnIdInLoadDynamicPartitions)
+  }
+
+  override def loadPartition(
+                              hive: Hive,
+                              loadPath: Path,
+                              tableName: String,
+                              partSpec: JMap[String, String],
+                              replace: Boolean,
+                              inheritTableSpecs: Boolean,
+                              isSkewedStoreAsSubdir: Boolean,
+                              isSrcLocal: Boolean): Unit = {
+    recordHiveCall()
+    loadPartitionMethod.invoke(hive, loadPath, tableName, partSpec, replace: JBoolean,
+      holdDDLTime, inheritTableSpecs: JBoolean, isSkewedStoreAsSubdir: JBoolean,
+      isSrcLocal: JBoolean, isAcid)
+  }
+
+  override def loadTable(
+                          hive: Hive,
+                          loadPath: Path,
+                          tableName: String,
+                          replace: Boolean,
+                          isSrcLocal: Boolean): Unit = {
+    recordHiveCall()
+    loadTableMethod.invoke(hive, loadPath, tableName, replace: JBoolean, holdDDLTime,
+      isSrcLocal: JBoolean, isSkewedStoreAsSubdir, isAcid)
+  }
+}
+
+// Reintroduce backward compatibility reversing the changes
+private[client] class Shim_v1_1 extends Shim_v1_2 {
+  private lazy val loadDynamicPartitionsMethod =
+    findMethod(
+      classOf[Hive],
+      "loadDynamicPartitions",
+      classOf[Path],
+      classOf[String],
+      classOf[JMap[String, String]],
+      JBoolean.TYPE,
+      JInteger.TYPE,
+      JBoolean.TYPE,
+      JBoolean.TYPE,
+      JBoolean.TYPE)
+
+  override def loadDynamicPartitions(
+                                      hive: Hive,
+                                      loadPath: Path,
+                                      tableName: String,
+                                      partSpec: JMap[String, String],
+                                      replace: Boolean,
+                                      numDP: Int,
+                                      hiveTable: Table): Unit = {
+    recordHiveCall()
+    val listBucketingEnabled = hiveTable.isStoredAsSubDirectories
+    loadDynamicPartitionsMethod.invoke(hive, loadPath, tableName, partSpec, replace: JBoolean,
+      numDP: JInteger, holdDDLTime, listBucketingEnabled: JBoolean, isAcid)
+
+  }
+
+  override def dropPartition(
+                              hive: Hive,
+                              dbName: String,
+                              tableName: String,
+                              part: JList[String],
+                              deleteData: Boolean,
+                              purge: Boolean): Unit = {
+    // if (purge) {
+    //   throw QueryExecutionErrors.alterTableWithDropPartitionAndPurgeUnsupportedError()
+    // }
+
+    recordHiveCall()
+    hive.dropPartition(dbName, tableName, part, deleteData || purge)
+  }
+
+}
+
 private[client] class Shim_v2_1 extends Shim_v2_0 {
 
   // true if there is any following stats task

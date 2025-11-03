@@ -39,6 +39,27 @@ package object client {
 
   // scalastyle:off
   private[hive] object hive {
+    // The curator dependency was added to the exclusions here because it seems to confuse the ivy
+    // library. org.apache.curator:curator is a pom dependency but ivy tries to find the jar for it,
+    // and fails.
+    case object v1_1 extends HiveVersion("1.1.1",
+      exclusions = Seq("eigenbase:eigenbase-properties",
+        "org.apache.calcite:calcite-core",
+        "org.apache.calcite:calcite-avatica",
+        "org.apache.curator:*",
+        "org.pentaho:pentaho-aggdesigner-algorithm",
+        "net.hydromatic:linq4j",
+        "net.hydromatic:quidem"))
+
+    case object v1_2 extends HiveVersion("1.2.2",
+      exclusions = Seq("eigenbase:eigenbase-properties",
+        "org.apache.calcite:calcite-core",
+        "org.apache.calcite:calcite-avatica",
+        "org.apache.curator:*",
+        "org.pentaho:pentaho-aggdesigner-algorithm",
+        "net.hydromatic:linq4j",
+        "net.hydromatic:quidem"))
+
     case object v2_0 extends HiveVersion("2.0.1",
       exclusions = Seq("org.apache.calcite:calcite-core",
         "org.apache.calcite:calcite-avatica",
@@ -102,7 +123,7 @@ package object client {
         "org.apache.hive:hive-vector-code-gen"))
 
     val allSupportedHiveVersions: Set[HiveVersion] =
-      Set(v2_0, v2_1, v2_2, v2_3, v3_0, v3_1, v4_0)
+      Set(v1_1, v1_2, v2_0, v2_1, v2_2, v2_3, v3_0, v3_1, v4_0)
   }
   // scalastyle:on
 
